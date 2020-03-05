@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0">
+<title>Picker</title>
+<h1>SMITE Favourite God Picker</h1>
+<body>This is based off the code for the <a href="https://www.dragonflycave.com/favorite.html">Favourite Pokemon Picker</a>.
+You can find the code <a href="https://github.com/antialiasis/favorite-picker">here</a>. <br> <br>
+This tool is to help you find who your favourite god is! Click one or more of your favorites from that group 
+and press the "Pick" button. Eventually your favourite gods will appear under "Found Favourites".
+Feel free to go through every god if you're that dedicated. This should work perfectly if you're consistent in your choices.
+
+<br> <br> (Also excuse the loading of god icons, they're hosted online.)
+
+<br> <br> This was made by <a href="https://raijinhasverybigpecs.tumblr.com/">@raijinhasverybigpecs</a>. Yell with me about best god Raijin there.
+
+
+<style>
+body {
+    background:#FFF;
+    color:#000;
+    font-family:verdana, sans-serif;
+    font-size:10pt;
+    margin:0;
+    padding:10px;
+}
+
+a:link, a:visited {
+    color:#008;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+a:active, a:hover {
+    color:#ACF;
+}
+
+.info {
+    font-weight:bold;
+}
+
+button {
+    font-family:inherit;
+    cursor:pointer;
+    border:0;
+    padding:0.3em 0.5em;
+    background:#CCC;
+    color:#000;
+}
+
+button:hover {
+    background:#DDD;
+}
+
+button.disabled {
+    background:#DDD;
+    color:#888;
+    cursor:not-allowed;
+}
+
+button.disabled:hover {
+    background:#DDD;
+}
+
+#container {
+    position:relative;
+    margin-left:-10px;
+    margin-right:-10px;
+    padding:10px;
+    overflow:hidden;
+}
+
+@media (min-width:1024px) {
+    /* Put the found favorites beside the picking div when the window is sufficiently large */
+    #picking {
+        float:left;
+        width:636px;
+    }
+
+    #secondary {
+        margin-left:646px;
+    }
+}
+
+@media (min-width:1300px) {
+    /* Once we get to the point where 636px is less than half of the width of the screen, make the picking div just take up half */
+    #picking {
+        width:50%;
+    }
+
+    #secondary {
+        margin-left:51%;
+    }
+}
+
+#pick {
+    background:#58F;
+    color:#FFF;
+    font-size:larger;
+    font-weight:bold;
+    width:6em;
+    margin-right:10px;
+}
+
+#pick.disabled {
+    background:#ACF;
+}
+
+#pick:hover {
+    background:#ACF;
+}
+
+.item-list {
+    padding:0;
+    list-style-type:none;
+    line-height:100px;
+}
+
+.item-list li {
+    margin:0;
+    display:inline-block;
+    height:100px;
+    width:100px;
+    line-height:100px;
+    border:3px solid transparent;
+    text-align:center;
+    position:relative;
+    vertical-align:top;
+    overflow:hidden;
+    background:#F7F7F7;
+    color:#000;
+}
+
+.item-list li img {
+    vertical-align:middle;
+    max-height:100%;
+    max-width:100%;
+}
+
+.item-list li span {
+    display:inline-block;
+    vertical-align:middle;
+    line-height:1.2;
+}
+
+@media (max-width:636px) {
+    .item-list {
+        line-height:75px;
+    }
+
+    .item-list li {
+        line-height:75px;
+        height:75px;
+        width:75px;
+    }
+}
+
+@media (max-width:423px) {
+    .item-list {
+        line-height:50px;
+    }
+
+    .item-list li {
+        line-height:50px;
+        height:50px;
+        width:50px;
+    }
+}
+
+#evaluating li {
+    cursor:pointer;
+}
+
+#favorites li {
+    cursor:move;
+}
+
+.item-list li:hover {
+    background:#CDF;
+}
+
+.item-list.sorting li:hover {
+    background:#F7F7F7;
+}
+
+#evaluating li.selected {
+    border:3px solid #7AC;
+}
+
+#evaluating, #buttons {
+    text-align:center;
+    margin:auto;
+}
+
+#evaluating li.notice {
+    width:auto;
+    height:auto;
+    max-width:260px;
+    margin:auto;
+    background:#F7F7F7;
+    padding:30px 30px;
+    color:#000;
+    text-align:center;
+    line-height:1.4;
+    cursor:auto;
+    font-size:10pt;
+}
+
+#buttons {
+    margin-top:30px;
+    position:relative;
+    z-index:3;
+}
+</style>
+</head>
+<body>
+<h1>Picker</h1>
+
+<div id="container">
+
+<div id="picking">
+<ul id="evaluating" class="item-list">
+</ul>
+
+<p id="buttons"><button id="pick">Pick</button> <button id="pass">Pass</button> <button id="undo">Undo</button> <button id="redo">Redo</button></p>
+</div>
+
+<div id="secondary">
+<h2>Found favorites</h2>
+
+<ol id="favorites" class="item-list">
+</ol>
+</div>
+</div>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="picker.js"></script>
+<script src="picker-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.7.0/Sortable.min.js"></script>
+<script>
+'use strict';
+
+var items = [
+	{id: 'achilles', name: 'Achilles', image: 'https://www.smitefire.com/images/god/icon/achilles.png'},
+	{id: 'agni', name: 'Agni', image: 'https://www.smitefire.com/images/god/icon/agni.png'},
+	{id: 'ah-muzen-cab', name: 'Ah Muzen Cab', image: 'https://www.smitefire.com/images/god/icon/ah-muzen-cab.png'},
+	{id: 'ahpuch', name: 'Ah Puch', image: 'https://www.smitefire.com/images/god/icon/ah-puch.png'},
+	{id: 'amaterasu', name: 'Amaterasu', image: 'https://www.smitefire.com/images/god/icon/amaterasu.png'},
+	{id: 'anhur', name: 'Anhur', image: 'https://www.smitefire.com/images/god/icon/anhur.png'},
+	{id: 'anubis', name: 'Anubis', image: 'https://www.smitefire.com/images/god/icon/anubis.png'},
+	{id: 'ao-kuang', name: 'Ao Kuang', image: 'https://www.smitefire.com/images/god/icon/ao-kuang.png'},
+	{id: 'aphrodite', name: 'Aphrodite', image: 'https://www.smitefire.com/images/god/icon/aphrodite.png'},
+	{id: 'apollo', name: 'Apollo', image: 'https://www.smitefire.com/images/god/icon/apollo.png'},
+	{id: 'arachne', name: 'Arachne', image: 'https://www.smitefire.com/images/god/icon/arachne.png'},
+	{id: 'ares', name: 'Ares', image: 'https://www.smitefire.com/images/god/icon/ares.png'},
+	{id: 'artemis', name: 'Artemis', image: 'https://www.smitefire.com/images/god/icon/artemis.png'},
+	{id: 'artio', name: 'Artio', image: 'https://www.smitefire.com/images/god/icon/artio.png'},
+	{id: 'athena', name: 'Athena', image: 'https://www.smitefire.com/images/god/icon/athena.png'},
+	{id: 'awilix', name: 'Awilix', image: 'https://www.smitefire.com/images/god/icon/awilix.png'},
+
+	{id: 'bacchus', name: 'Bacchus', image: 'https://www.smitefire.com/images/god/icon/bacchus.png'},
+	{id: 'baron-samedi', name: 'Baron Samedi', image: 'https://www.smitefire.com/images/god/icon/baron-samedi.png'},
+	{id: 'bastet', name: 'Bastet', image: 'https://www.smitefire.com/images/god/icon/bastet.png'},
+	{id: 'bellona', name: 'Bellona', image: 'https://www.smitefire.com/images/god/icon/bellona.png'},
+
+	{id: 'cabrakan', name: 'Cabrakan', image: 'https://www.smitefire.com/images/god/icon/cabrakan.png'},
+	{id: 'camazotz', name: 'Camazotz', image: 'https://www.smitefire.com/images/god/icon/camazotz.png'},
+	{id: 'cerberus', name: 'Cerberus', image: 'https://www.smitefire.com/images/god/icon/cerberus.png'},
+	{id: 'cernunnos', name: 'Cernunnos', image: 'https://www.smitefire.com/images/god/icon/cernunnos.png'},
+	{id: 'change', name: "Chang'e", image: 'https://www.smitefire.com/images/god/icon/change.png'},
+	{id: 'chernobog', name: 'Chernobog', image: 'https://www.smitefire.com/images/god/icon/chernobog.png'},
+	{id: 'chiron', name: 'Chiron', image: 'https://www.smitefire.com/images/god/icon/chiron.png'},
+	{id: 'chronos', name: 'Chronos', image: 'https://www.smitefire.com/images/god/icon/chronos.png'},
+	{id: 'cu-chulainn', name: 'Cu Chulainn', image: 'https://www.smitefire.com/images/god/icon/cu-chulainn.png'},
+	{id: 'cupid', name: 'Cupid', image: 'https://www.smitefire.com/images/god/icon/cupid.png'},
+
+	{id: 'da-ji', name: 'Daji', image: 'https://www.smitefire.com/images/god/icon/da-ji.png'},
+	{id: 'discordia', name: 'Discordia', image: 'https://www.smitefire.com/images/god/icon/discordia.png'},
+
+	{id: 'erlang-shen', name: 'Erlang Shen', image: 'https://www.smitefire.com/images/god/icon/erlang-shen.png'},
+
+	{id: 'fafnir', name: 'Fafnir', image: 'https://www.smitefire.com/images/god/icon/fafnir.png'},
+	{id: 'fenrir', name: 'Fenrir', image: 'https://www.smitefire.com/images/god/icon/fenrir.png'},
+	{id: 'freya', name: 'Freya', image: 'https://www.smitefire.com/images/god/icon/freya.png'},
+
+	{id: 'ganesha', name: 'Ganesha', image: 'https://www.smitefire.com/images/god/icon/ganesha.png'},
+	{id: 'geb', name: 'Geb', image: 'https://www.smitefire.com/images/god/icon/geb.png'},
+	{id: 'guan-yu', name: 'Guan Yu', image: 'https://www.smitefire.com/images/god/icon/guan-yu.png'},
+
+	{id: 'hachiman', name: 'Hachiman', image: 'https://www.smitefire.com/images/god/icon/hachiman.png'},
+	{id: 'hades', name: 'Hades', image: 'https://www.smitefire.com/images/god/icon/hades.png'},
+	{id: 'he-bo', name: 'He Bo', image: 'https://www.smitefire.com/images/god/icon/he-bo.png'},
+	{id: 'heimdallr', name: 'Heimdallr', image: 'https://www.smitefire.com/images/god/icon/heimdallr.png'},
+	{id: 'hel', name: 'Hel', image: 'https://www.smitefire.com/images/god/icon/hel.png'},
+	{id: 'hera', name: 'Hera', image: 'https://www.smitefire.com/images/god/icon/hera.png'},
+	{id: 'hercules', name: 'Hercules', image: 'https://www.smitefire.com/images/god/icon/hercules.png'},
+	{id: 'horus', name: 'Horus', image: 'https://www.smitefire.com/images/god/icon/horus.png'},
+	{id: 'hou-yi', name: 'Hou Yi', image: 'https://www.smitefire.com/images/god/icon/hou-yi.png'},
+	{id: 'hun-batz', name: 'Hun Batz', image: 'https://www.smitefire.com/images/god/icon/hun-batz.png'},
+
+	{id: 'isis', name: 'Isis', image: 'https://www.smitefire.com/images/god/icon/isis.png'},
+	{id: 'izanami', name: 'Izanami', image: 'https://www.smitefire.com/images/god/icon/izanami.png'},
+
+	{id: 'janus', name: 'janus', image: 'https://www.smitefire.com/images/god/icon/janus.png'},
+	{id: 'jing-wei', name: 'jing-wei', image: 'https://www.smitefire.com/images/god/icon/jing-wei.png'},
+	{id: 'jormungandr', name: 'jormungandr', image: 'https://www.smitefire.com/images/god/icon/jormungandr.png'},
+
+	{id: 'kali', name: 'kali', image: 'https://www.smitefire.com/images/god/icon/kali.png'},
+	{id: 'khepri', name: 'khepri', image: 'https://www.smitefire.com/images/god/icon/khepri.png'},
+	{id: 'king-arthur', name: 'king-arthur', image: 'https://www.smitefire.com/images/god/icon/king-arthur.png'},
+	{id: 'kukulkan', name: 'kukulkan', image: 'https://www.smitefire.com/images/god/icon/kukulkan.png'},
+	{id: 'kumbhakarna', name: 'kumbhakarna', image: 'https://www.smitefire.com/images/god/icon/kumbhakarna.png'},
+	{id: 'kuzenbo', name: 'kuzenbo', image: 'https://www.smitefire.com/images/god/icon/kuzenbo.png'},
+
+	{id: 'loki', name: 'loki', image: 'https://www.smitefire.com/images/god/icon/loki.png'},
+
+	{id: 'medusa', name: 'medusa', image: 'https://www.smitefire.com/images/god/icon/medusa.png'},
+	{id: 'mercury', name: 'mercury', image: 'https://www.smitefire.com/images/god/icon/mercury.png'},
+	{id: 'merlin', name: 'merlin', image: 'https://www.smitefire.com/images/god/icon/merlin.png'},
+	{id: 'mulan', name: 'mulan', image: 'https://www.smitefire.com/images/god/icon/mulan.png'},
+
+	{id: 'ne-zha', name: 'ne-zha', image: 'https://www.smitefire.com/images/god/icon/ne-zha.png'},
+	{id: 'neith', name: 'neith', image: 'https://www.smitefire.com/images/god/icon/neith.png'},
+	{id: 'nemesis', name: 'nemesis', image: 'https://www.smitefire.com/images/god/icon/nemesis.png'},
+	{id: 'nike', name: 'nike', image: 'https://www.smitefire.com/images/god/icon/nike.png'},
+	{id: 'nox', name: 'nox', image: 'https://www.smitefire.com/images/god/icon/nox.png'},
+	{id: 'nu-wa', name: 'nu-wa', image: 'https://www.smitefire.com/images/god/icon/nu-wa.png'},
+
+	{id: 'odin', name: 'odin', image: 'https://www.smitefire.com/images/god/icon/odin.png'},
+	{id: 'olorun', name: 'olorun', image: 'https://www.smitefire.com/images/god/icon/olorun.png'},
+	{id: 'osiris', name: 'osiris', image: 'https://www.smitefire.com/images/god/icon/osiris.png'},
+
+	{id: 'pele', name: 'pele', image: 'https://www.smitefire.com/images/god/icon/pele.png'},
+	{id: 'persephone', name: 'persephone', image: 'https://www.smitefire.com/images/god/icon/persephone.png'},
+	{id: 'poseidon', name: 'poseidon', image: 'https://www.smitefire.com/images/god/icon/poseidon.png'},
+
+	{id: 'ra', name: 'ra', image: 'https://www.smitefire.com/images/god/icon/ra.png'},
+	{id: 'raijin', name: 'raijin', image: 'https://www.smitefire.com/images/god/icon/raijin.png'},
+	{id: 'rama', name: 'rama', image: 'https://www.smitefire.com/images/god/icon/rama.png'},
+	{id: 'ratatoskr', name: 'ratatoskr', image: 'https://www.smitefire.com/images/god/icon/ratatoskr.png'},
+	{id: 'ravana', name: 'ravana', image: 'https://www.smitefire.com/images/god/icon/ravana.png'},
+
+	{id: 'scylla', name: 'scylla', image: 'https://www.smitefire.com/images/god/icon/scylla.png'},
+	{id: 'serqet', name: 'serqet', image: 'https://www.smitefire.com/images/god/icon/serqet.png'},
+	{id: 'set', name: 'set', image: 'https://www.smitefire.com/images/god/icon/set.png'},
+	{id: 'skadi', name: 'skadi', image: 'https://www.smitefire.com/images/god/icon/skadi.png'},
+	{id: 'sobek', name: 'sobek', image: 'https://www.smitefire.com/images/god/icon/sobek.png'},
+	{id: 'sol', name: 'sol', image: 'https://www.smitefire.com/images/god/icon/sol.png'},
+	{id: 'sun-wukong', name: 'sun-wukong', image: 'https://www.smitefire.com/images/god/icon/sun-wukong.png'},
+	{id: 'susano', name: 'susano', image: 'https://www.smitefire.com/images/god/icon/susano.png'},
+	{id: 'sylvanus', name: 'sylvanus', image: 'https://www.smitefire.com/images/god/icon/sylvanus.png'},
+
+	{id: 'terra', name: 'terra', image: 'https://www.smitefire.com/images/god/icon/terra.png'},
+	{id: 'thanatos', name: 'thanatos', image: 'https://www.smitefire.com/images/god/icon/thanatos.png'},
+	{id: 'the-morrigan', name: 'the-morrigan', image: 'https://www.smitefire.com/images/god/icon/the-morrigan.png'},
+	{id: 'thor', name: 'thor', image: 'https://www.smitefire.com/images/god/icon/thor.png'},
+	{id: 'thoth', name: 'thoth', image: 'https://www.smitefire.com/images/god/icon/thoth.png'},
+	{id: 'tyr', name: 'tyr', image: 'https://www.smitefire.com/images/god/icon/tyr.png'},
+
+	{id: 'ullr', name: 'ullr', image: 'https://www.smitefire.com/images/god/icon/ullr.png'},
+
+	{id: 'vamana', name: 'vamana', image: 'https://www.smitefire.com/images/god/icon/vamana.png'},
+	{id: 'vulcan', name: 'vulcan', image: 'https://www.smitefire.com/images/god/icon/vulcan.png'},
+
+	{id: 'xbalanque', name: 'xbalanque', image: 'https://www.smitefire.com/images/god/icon/xbalanque.png'},
+	{id: 'xing-tian', name: 'xing-tian', image: 'https://www.smitefire.com/images/god/icon/xing-tian.png'},
+
+	{id: 'yemoja', name: 'yemoja', image: 'https://www.smitefire.com/images/god/icon/yemoja.png'},
+	{id: 'ymir', name: 'ymir', image: 'https://www.smitefire.com/images/god/icon/ymir.png'},
+
+	{id: 'zeus', name: 'zeus', image: 'https://www.smitefire.com/images/god/icon/zeus.png'},
+	{id: 'zhong-kui', name: 'zhong-kui', image: 'https://www.smitefire.com/images/god/icon/zhong-kui.png'},
+];
+
+var myPicker = new picker.Picker({
+    items: items,
+    defaultSettings: {
+        minBatchSize: 3,
+        maxBatchSize: 12,
+    }
+});
+
+var pickerUI = new PickerUI(myPicker, {
+    elements: {
+        pick: "#pick",
+        pass: "#pass",
+        undo: "#undo",
+        redo: "#redo",
+        evaluating: "#evaluating",
+        favorites: "#favorites"
+    }
+});
+
+pickerUI.initialize();
+
+/* Sortable favorites - you can safely remove this, and the Sortable.min.js script, if you don't want to be able to sort your favorite list. */
+var sortable = new Sortable(pickerUI.elem.favorites.get(0), {
+    draggable: '.item',
+    animation: 100,
+    onStart: function() {
+        pickerUI.elem.favorites.addClass("sorting");
+    },
+    onEnd: function() {
+        pickerUI.elem.favorites.removeClass("sorting");
+    },
+    onUpdate: function() {
+        myPicker.setFavorites(pickerUI.elem.favorites.children().map(function() {
+            return pickerUI.getItem(this);
+        }).get());
+        pickerUI.update(true);
+    }
+});
+/* End sortable favorites */
+</script>
+</body>
+</html>
